@@ -7,3 +7,5 @@ while [[ -n "$1" ]]; do
     count=$(( $count + 1 ))
     shift
 done
+
+# Test
