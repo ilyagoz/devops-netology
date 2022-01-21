@@ -105,4 +105,208 @@ python3   6422                           ivg    3w      REG              253,0  
 ```
 Теперь файл надежно обнулен (хотя программа успела в него кое-что записать, но уже с самого начала).
 
+Проделаем трюк с подменой дескриптора файла.
+```
+$ python3 ./openforwrite.py &
+[1] 2332
+$ lsof | grep 123
+python3   2332                            ivg    3w      REG              253,0     1930     529891 /home/ivg/123.txt
+$ rm 123.txt 
+$ lsof | grep 123
+python3   2332                            ivg    3w      REG              253,0     2134     529891 /home/ivg/123.txt (deleted)
+
+$ gdb -p 2332
+(...)
+Attaching to process 2332
+(...)
+(gdb) call open("/home/ivg/123_new.txt", 00001101,0666)
+$2 = 4
+(gdb) shell ls -la /proc/2332/fd/
+total 0
+dr-x------ 2 ivg ivg  0 Jan 21 16:25 .
+dr-xr-xr-x 9 ivg ivg  0 Jan 21 16:25 ..
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 0 -> /dev/pts/1
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 1 -> /dev/pts/1
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 2 -> /dev/pts/1
+l-wx------ 1 ivg ivg 64 Jan 21 16:25 3 -> '/home/ivg/123.txt (deleted)'
+l-wx------ 1 ivg ivg 64 Jan 21 16:35 4 -> /home/ivg/123_new.txt
+(gdb) call (int)dup2(4,3)
+$3 = 3
+(gdb) shell ls -la /proc/2332/fd/
+total 0
+dr-x------ 2 ivg ivg  0 Jan 21 16:25 .
+dr-xr-xr-x 9 ivg ivg  0 Jan 21 16:25 ..
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 0 -> /dev/pts/1
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 1 -> /dev/pts/1
+lrwx------ 1 ivg ivg 64 Jan 21 16:25 2 -> /dev/pts/1
+l-wx------ 1 ivg ivg 64 Jan 21 16:25 3 -> /home/ivg/123_new.txt
+l-wx------ 1 ivg ivg 64 Jan 21 16:35 4 -> /home/ivg/123_new.txt
+(gdb) call close(4)
+$4 = 0
+(gdb) quit
+(...)
+$ lsof | grep 123
+python3   2332                            ivg    3w      REG              253,0      255     525387 /home/ivg/123_new.txt
+```
+Файл 123.txt успешно удален.
+
 > Занимают ли зомби-процессы какие-то ресурсы в ОС (CPU, RAM, IO)?
+
+Да, какие-то занимают. Дескриптор зомби-процесса остается в списке задач ядра. Размер дескриптора - это размер структуры `task_struct`, который зависит от архитектуры и может быть порядка 2 кб. Какое-то количество тактов процессора тратится на его обработку. Кроме того, зомби занимает pid, которых на 32-битной Linux всего 32768, а у нас 
+```
+$ cat /proc/sys/kernel/pid_max 
+4194304
+```
+
+> В iovisor BCC есть утилита opensnoop:
+
+> `root@vagrant:~# dpkg -L bpfcc-tools | grep sbin/opensnoop`
+>
+> `/usr/sbin/opensnoop-bpfcc`
+
+> На какие файлы вы увидели вызовы группы open за первую секунду работы утилиты? 
+```
+vagrant@vagrant:~$ sudo opensnoop-bpfcc
+PID    COMM               FD ERR PATH
+636    irqbalance          6   0 /proc/interrupts
+636    irqbalance          6   0 /proc/stat
+636    irqbalance          6   0 /proc/irq/20/smp_affinity
+636    irqbalance          6   0 /proc/irq/0/smp_affinity
+636    irqbalance          6   0 /proc/irq/1/smp_affinity
+636    irqbalance          6   0 /proc/irq/8/smp_affinity
+636    irqbalance          6   0 /proc/irq/12/smp_affinity
+636    irqbalance          6   0 /proc/irq/14/smp_affinity
+636    irqbalance          6   0 /proc/irq/15/smp_affinity
+807    vminfo              4   0 /var/run/utmp
+629    dbus-daemon        -1   2 /usr/local/share/dbus-1/system-services
+629    dbus-daemon        20   0 /usr/share/dbus-1/system-services
+629    dbus-daemon        -1   2 /lib/dbus-1/system-services
+629    dbus-daemon        20   0 /var/lib/snapd/dbus-1/system-services/
+380    systemd-udevd      14   0 /sys/fs/cgroup/unified/system.slice/systemd-udevd.service/cgroup.procs
+380    systemd-udevd      14   0 /sys/fs/cgroup/unified/system.slice/systemd-udevd.service/cgroup.threads
+807    vminfo              4   0 /var/run/utmp
+629    dbus-daemon        -1   2 /usr/local/share/dbus-1/system-services
+629    dbus-daemon        20   0 /usr/share/dbus-1/system-services
+629    dbus-daemon        -1   2 /lib/dbus-1/system-services
+629    dbus-daemon        20   0 /var/lib/snapd/dbus-1/system-services/
+```
+
+> Какой системный вызов использует uname -a? Приведите цитату из man
+> по этому системному вызову, где описывается альтернативное
+> местоположение в /proc, где можно узнать версию ядра и релиз ОС.
+```
+$ strace uname -a
+(...)
+
+uname({sysname="Linux", nodename="vagrant", ...}) = 0
+
+(...)
+```
+
+> Part of the utsname information is also accessible via
+> /proc/sys/kernel/{ostype, hostname, osrelease, version, domainname}.
+
+```
+$ uname -a
+Linux vagrant 5.4.0-91-generic #102-Ubuntu SMP Fri Nov 5 16:31:28 UTC 2021 x86_64 x86_64 x86_64 GNU/Linux
+$ cat  /proc/sys/kernel/{ostype,hostname,osrelease,version,domainname}
+Linux
+vagrant
+5.4.0-91-generic
+#102-Ubuntu SMP Fri Nov 5 16:31:28 UTC 2021
+(none)
+```
+
+> Чем отличается последовательность команд через ; и через && в bash? Например:
+>
+
+```
+root@netology1:~# test -d /tmp/some_dir; echo Hi
+Hi
+root@netology1:~# test -d /tmp/some_dir && echo Hi
+root@netology1:~#
+```
+
+Команды, перечисленные через `;`, будут исполнены одна за другой,
+независимо от кода возврата предыдущей. Если в цепочке команд,
+связанных через `&&`, какая-то завершится с кодом не 0, bash прервет
+исполнение цепочки.
+
+> Есть ли смысл использовать в bash &&, если применить set -e?
+
+Казалось бы, `set -e` заставит выполнение скрипта прекратиться, если
+какая-то команда завершится с ошибкой, точно так же, как и `&&`. Но это не совсем так, например, оно не срабатывает при подстановке команд (если только не запускать `bash --posix`). Есть много разных особенностей `set -e`, см. [Why doesn't set -e (or set -o errexit, or trap ERR) do what I expected?](http://mywiki.wooledge.org/BashFAQ/105/)
+
+Пример `test.sh`:
+``` shell
+#!/bin/bash 
+set -e
+
+a=$(rm -f /tmp/no_such_file; test -r /tmp/no_such_file; ls -l /tmp/no_such_file; echo "All is well.")
+echo $a
+```
+```
+$ ./test.sh
+ls: cannot access '/tmp/no_such_file': No such file or directory
+All is well.
+```
+Команды в скобках выполнились.
+Пример `test2.sh`:
+``` shell
+#!/bin/bash 
+set -e
+
+a=$(rm -f /tmp/no_such_file && test -r /tmp/no_such_file && ls -l /tmp/no_such_file && echo "All is well.")
+echo $a
+```
+```
+$ ./test2.sh
+$ 
+```
+Команды в скобках не выполнились. Так что смысл иногда есть.
+
+> Из каких опций состоит режим bash set -euxo pipefail и почему его
+> хорошо было бы использовать в сценариях?
+
+Это так называемый [Bash Strict
+Mode](http://redsymbol.net/articles/unofficial-bash-strict-mode/). Опции
+делают следующее: -e заставит выполнение скрипта прекратиться, если
+какая-то команда завершится с ошибкой (см. выше), -u делает ошибкой
+использование неинициализированных переменных, -x выводит команды с
+аргументами по мере их исполнения, -o pipefail делает кодом возврата
+из пайплайна код возврата последней команды, завершившейся с
+ошибкой. Предполагается, что набор этих опций поможет не пропускать
+ошибки при выполнении сценариев.
+
+> Используя -o stat для ps, определите, какой наиболее часто
+> встречающийся статус у процессов в системе. В man ps ознакомьтесь
+> (/PROCESS STATE CODES) что значат дополнительные к основной
+> заглавной буквы статуса процессов. Его можно не учитывать при
+> расчете (считать S, Ss или Ssl равнозначными).
+
+```
+$ ps -eo stat= | sort | uniq -c | sort -g
+      1 R+
+      1 Sl
+      1 SLsl
+      1 S<s
+      2 SN
+      3 S+
+      3 Ss+
+      6 Ssl
+      7 S<
+     10 I
+     15 Ss
+     31 S
+     40 I<
+ ```
+
+Или, не учитывая дополнительные буквы:
+
+```
+$ ps -eo stat= | cut -c 1 | sort | uniq -c | sort -g
+      1 R
+     49 I
+     71 S
+```
+Большинство процессов в interruptible sleep, ждут сигналов.
