@@ -250,4 +250,3 @@ For more information, see /etc/sysctl.d/10-ptrace.conf
 tee направляет поток данных на stdout и одновременно в указанные
 файлы. Поскольку tee выполняется через sudo, он может записывать в
 файл в каталоге /root. Можно также `sudo bash -c 'echo string | cat > /root/new_file'`
-

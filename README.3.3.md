@@ -310,3 +310,25 @@ $ ps -eo stat= | cut -c 1 | sort | uniq -c | sort -g
      71 S
 ```
 Большинство процессов в interruptible sleep, ждут сигналов.
+
+Примечание. Результат обнуления файла, как ни странно, зависит от файловой системы. Вдруг там vfat?
+
+```
+ivg@vagrant:~$ df -Th /mnt/
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/loop7     vfat   20M   20M     0 100% /mnt
+ivg@vagrant:~$ rm /mnt/123.txt 
+ivg@vagrant:~$ df -Th /mnt/
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/loop7     vfat   20M   20M     0 100% /mnt
+ivg@vagrant:~$ lsof | grep mnt
+python3   4011                            ivg    3w      REG                7,7 20910560         12 /mnt/123.txt (deleted)
+ivg@vagrant:~$ truncate -s 0 /proc/4011/fd/3
+ivg@vagrant:~$ df -Th /mnt/
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/loop7     vfat   20M   20M     0 100% /mnt
+ivg@vagrant:~$ truncate -s 0 /proc/4011/fd/3; sleep 1; df -Th /mnt
+Filesystem     Type  Size  Used Avail Use% Mounted on
+/dev/loop7     vfat   20M   20M     0 100% /mnt
+ivg@vagrant:~$
+```
