@@ -37,12 +37,32 @@ for result in result_os.split('\n'):
 
 ### Ваш скрипт:
 ```python
-???
+import os, sys
+
+REPO_DIR = os.path.expanduser("~/Documents/Devops/devops-netology")
+
+bash_command = ["cd " + REPO_DIR, "git status"]
+
+if os.access(REPO_DIR, os.R_OK):
+    print("Локальный репозиторий: " + REPO_DIR)
+else:
+    print ("Локальный репозиторий " + REPO_DIR + " недоступен.")
+    sys.exit(-1)
+    
+result_os = os.popen(' && '.join(bash_command)).read()
+
+is_change = False
+for result in result_os.splitlines():
+    if result.find('modified:') != -1:
+        prepare_result = result.replace('\tmodified:   ', '')
+        print(prepare_result)
+
 ```
 
 ### Вывод скрипта при запуске при тестировании:
 ```
-???
+Локальный репозиторий: C:\Users\ivg/Documents/Devops/devops-netology
+README.4.2.md
 ```
 
 ## Обязательная задача 3
@@ -50,12 +70,58 @@ for result in result_os.split('\n'):
 
 ### Ваш скрипт:
 ```python
-???
+import os, sys, getopt
+
+REPO_DIR = os.path.expanduser("~/Documents/Devops/devops-netology")
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "")
+except getopt.GetoptError as err:
+    print(err)
+    sys.exit(2)
+
+if len(args) > 0:
+    REPO_DIR = args[0]
+else:
+    print("Репозиторий не указан, используем репозиторий по умолчанию.")
+
+bash_command = ["cd " + REPO_DIR, "git status"]
+
+if os.access(REPO_DIR, os.R_OK):
+    print("Локальный репозиторий: " + REPO_DIR)
+else:
+    print ("Локальный репозиторий " + REPO_DIR + " недоступен.")
+    sys.exit(-1)
+
+pipe = os.popen(' && '.join(bash_command))
+result_os = pipe.read()
+retcode = pipe.close()
+if retcode != None:
+    print('Git не смог проверить локальный репозиторий ' + REPO_DIR + '\nУбедитесь, что каталог задан правильно.')
+    sys.exit(-1)
+
+is_change = False
+for result in result_os.splitlines():
+    if result.find('modified:') != -1:
+        prepare_result = result.replace('\tmodified:   ', '')
+        print(prepare_result)
 ```
 
 ### Вывод скрипта при запуске при тестировании:
 ```
-???
+$ python check_modified.py sdfsf
+Локальный репозиторий sdfsf недоступен.
+
+$ python check_modified.py ~/Documents/Devops/test/
+Локальный репозиторий: C:/Users/ivg/Documents/Devops/test/
+test1.txt
+test2.txt
+
+$ python check_modified.py ~/Documents/Devops/
+Локальный репозиторий: C:/Users/ivg/Documents/Devops/
+fatal: not a git repository (or any of the parent directories): .git
+Git не смог проверить локальный репозиторий C:/Users/ivg/Documents/Devops/
+Убедитесь, что каталог задан правильно.
 ```
 
 ## Обязательная задача 4
@@ -63,12 +129,76 @@ for result in result_os.split('\n'):
 
 ### Ваш скрипт:
 ```python
-???
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Mar 27 16:10:04 2022
+
+@author: ivg
+"""
+
+SERVER_NAMES = ["drive.google.com", "mail.google.com", "google.com"]
+ADDRESSES_FILE = "addr.json"
+
+import os, json, ipaddress, socket, sys
+
+old_addr = {}
+
+if os.path.exists(ADDRESSES_FILE):
+    try:
+        fp = open(ADDRESSES_FILE, 'r')    
+        old_addr = json.load(fp)
+    except OSError as e:
+        print("Ошибка открытия файла", ADDRESSES_FILE, ":\n", e)
+    except ValueError as e:
+        print("Ошибка в файле " + ADDRESSES_FILE + ":\n", e, "\nСравнить новые адреса со старыми не получится.")
+    finally:
+        fp.close()
+    
+else:
+    pass
+
+new_addr = {}
+
+for s in SERVER_NAMES:
+    try:
+        addr = socket.gethostbyname(s)
+    except OSError as e:
+        print("Не удается получить адрес для сервера", s, ":", e)
+        continue
+    new_addr[s] = str(addr)
+
+if len(new_addr) > 0:
+    for name, addr in new_addr.items():
+        print(name, '-', addr)
+        if name in old_addr:
+            if ipaddress.ip_address(old_addr[name]) != ipaddress.ip_address(addr):
+                print("[ERROR]", name, "IP mismatch:", old_addr[name], addr)
+else:
+    print("Ни для одного из серверов не удалось получить адрес.")
+    sys.exit(-1)
+
+try:
+    fp = open(ADDRESSES_FILE, 'w')    
+    json.dump(new_addr, fp)
+except OSError as e:
+    print("Ошибка открытия файла", ADDRESSES_FILE, ":\n", e)
+finally:
+    fp.close()
+
 ```
 
 ### Вывод скрипта при запуске при тестировании:
 ```
-???
+$ python check_services.py
+drive.google.com - 142.250.74.110
+mail.google.com - 64.233.165.19
+google.com - 64.233.164.101
+
+$ python check_services.py
+drive.google.com - 142.250.74.110
+mail.google.com - 142.250.74.69
+[ERROR] mail.google.com IP mismatch: 64.233.165.19 142.250.74.69
+google.com - 64.233.164.101
 ```
 
 ## Дополнительное задание (со звездочкой*) - необязательно к выполнению
