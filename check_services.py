@@ -6,25 +6,23 @@ Created on Sun Mar 27 16:10:04 2022
 """
 
 SERVER_NAMES = ["drive.google.com", "mail.google.com", "google.com"]
-ADDRESSES_FILE = "addr.json"
+ADDRESSES_FILE_JSON = "addr.json"
+ADDRESSES_FILE_YAML = "addr.yaml"
 
-import os, json, ipaddress, socket, sys
+import json, ipaddress, socket, sys, yaml
 
 old_addr = {}
 
-if os.path.exists(ADDRESSES_FILE):
-    try:
-        fp = open(ADDRESSES_FILE, 'r')    
-        old_addr = json.load(fp)
-    except OSError as e:
-        print("Ошибка открытия файла", ADDRESSES_FILE, ":\n", e)
-    except ValueError as e:
-        print("Ошибка в файле " + ADDRESSES_FILE + ":\n", e, "\nСравнить новые адреса со старыми не получится.")
-    finally:
-        fp.close()
-    
-else:
-    pass
+try:
+    fp = open(ADDRESSES_FILE_JSON, 'r')    
+    old_addr = json.load(fp)
+except OSError as e:
+    print("Ошибка открытия файла", ADDRESSES_FILE_JSON, ":\n", e)
+except ValueError as e:
+    print("Ошибка в файле " + ADDRESSES_FILE_JSON + ":\n", e, "\nСравнить новые адреса со старыми не получится.")
+finally:
+    fp.close()
+
 
 new_addr = {}
 
@@ -46,10 +44,22 @@ else:
     print("Ни для одного из серверов не удалось получить адрес.")
     sys.exit(-1)
 
+# В задании указан формат `- имя сервиса: его IP`. Это немного нелогичный формат,
+# так как означает список словарей, по одному словарю на сервис, вместо одного
+# словаря на все сервисы. Поэтому придется сделать так.
+addr_for_yaml = []
+for name, addr in new_addr.items():
+    d = {}
+    d[name]=addr
+    addr_for_yaml.append(d)
+
 try:
-    fp = open(ADDRESSES_FILE, 'w')    
-    json.dump(new_addr, fp)
+    fp_json = open(ADDRESSES_FILE_JSON, 'w')    
+    fp_yaml = open(ADDRESSES_FILE_YAML, 'w')    
+    json.dump(new_addr, fp_json)
+    yaml.dump(addr_for_yaml, fp_yaml)
 except OSError as e:
-    print("Ошибка открытия файла", ADDRESSES_FILE, ":\n", e)
+    print("Ошибка открытия файла", ADDRESSES_FILE_JSON, ":\n", e)
 finally:
-    fp.close()
+    fp_json.close()
+    fp_yaml.close()
