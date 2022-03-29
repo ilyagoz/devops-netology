@@ -20,7 +20,6 @@ except OSError as e:
     print("Ошибка открытия файла", ADDRESSES_FILE_JSON, ":\n", e)
 except ValueError as e:
     print("Ошибка в файле " + ADDRESSES_FILE_JSON + ":\n", e, "\nСравнить новые адреса со старыми не получится.")
-finally:
     fp.close()
 
 
@@ -46,20 +45,33 @@ else:
 
 # В задании указан формат `- имя сервиса: его IP`. Это немного нелогичный формат,
 # так как означает список словарей, по одному словарю на сервис, вместо одного
-# словаря на все сервисы. Поэтому придется сделать так.
+# словаря на все сервисы. Поэтому придется сделать так. Но можно, конечно, вручную
+# писать в файл.
 addr_for_yaml = []
 for name, addr in new_addr.items():
     d = {}
     d[name]=addr
     addr_for_yaml.append(d)
 
+fp_json = None
 try:
     fp_json = open(ADDRESSES_FILE_JSON, 'w')    
-    fp_yaml = open(ADDRESSES_FILE_YAML, 'w')    
-    json.dump(new_addr, fp_json)
-    yaml.dump(addr_for_yaml, fp_yaml)
 except OSError as e:
     print("Ошибка открытия файла", ADDRESSES_FILE_JSON, ":\n", e)
-finally:
+
+json.dump(new_addr, fp_json, indent=1)
+
+if fp_json is not None:
     fp_json.close()
+
+fp_yaml = None
+try:
+    fp_yaml = open(ADDRESSES_FILE_YAML, 'w')    
+except OSError as e:
+    print("Ошибка открытия файла", ADDRESSES_FILE_JSON, ":\n", e)
+
+yaml.dump(addr_for_yaml, fp_yaml)
+
+if fp_yaml is not None:
     fp_yaml.close()
+

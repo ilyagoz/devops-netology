@@ -1,0 +1,44 @@
+# Комментарий
+matrix_yaml_style: 
+      - [1, 0, 0]
+      - [0, 1, 0]
+      - [0, 0, 1]
+base_config: &base
+ os: ubuntu
+ re: >
+  dsfgdfgsdfg
+  sdgsdgsdfgsdfgsd
+  dsfgdsfgdsfg
+sdf:  
+  - --sfsf
+  
+prod:
+ <<: *base
+foo: 'bar'
+
+json:
+  - rigid
+  - better for data interchange
+yaml: 
+  - slim and flexible
+  - better for configuration
+object:
+  key: value
+  array:
+    - null_value:
+    - boolean: true
+    - integer: 1
+    - alias: &example aliases are like variables
+    - alias: *example
+paragraph: >
+   Blank lines denote
+
+   paragraph breaks
+content: |-
+   Or we
+   can auto
+   convert line breaks
+   to save space
+alias: &foo
+  bar: baz
+alias_reuse: *foo 
