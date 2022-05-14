@@ -1,0 +1,9 @@
+server {
+    listen              443 ssl;
+    root                /var/www/www1.local/html;
+    server_name         {{ inventory_hostname }};
+    ssl_certificate     /etc/ssl/certs/{{ inventory_hostname }}.crt;
+    ssl_certificate_key /etc/ssl/private/{{ inventory_hostname }}.key;
+    ssl_protocols       TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+}

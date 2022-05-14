@@ -1,0 +1,24 @@
+---
+- name: Configuring TLS in nginx
+  hosts: webservers
+  become: true
+  tasks:
+  - name: Copying server_with_tls.conf
+    template:
+     src: ./server_with_tls.conf.j2
+     dest: /etc/nginx/conf.d/server_with_tls.conf
+  - name: Copying script for refreshing certificates
+    copy:
+     src:  ./refresh_cert.sh
+     dest: ./refresh_cert.sh
+     mode: u+x
+  - name: Refreshing certificates
+    ansible.builtin.shell: ./refresh_cert.sh
+
+  - name: Setting up cron for refreshing certificates
+    ansible.builtin.cron:
+     name: "Refresh certificates"
+     user: vagrant
+     minute: "1"
+     hour: "*/20"
+     job: "/home/vagrant/refresh_cert.sh"

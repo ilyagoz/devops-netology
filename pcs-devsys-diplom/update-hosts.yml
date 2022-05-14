@@ -1,0 +1,18 @@
+---
+- name: Add mappings to /etc/hosts
+  hosts: all
+  become: yes
+  become_user: root
+  remote_user: vagrant
+  tasks:
+  - name: do
+    blockinfile:
+      dest: /etc/hosts
+      block: |
+        192.168.56.8 vault.local
+        192.168.56.9 www1.local
+        192.168.56.4 control.local
+      state: present
+      owner: root
+      group: root
+      mode: '0644'

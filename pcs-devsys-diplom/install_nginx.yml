@@ -1,0 +1,15 @@
+---
+- hosts: webservers
+  become: true
+  roles:
+    - role: nginxinc.nginx
+      vars:
+         nginx_install_from: nginx_repository
+         nginx_state: install
+         nginx_setup: install
+  tasks:
+  - name: Installing jq
+    apt:
+      name: jq
+      state: present
+

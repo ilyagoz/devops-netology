@@ -1,0 +1,77 @@
+---
+- name: Installing vault
+  hosts: vaultserver
+  gather_facts: true
+  become: yes
+  become_user: root
+  remote_user: vagrant
+
+  tasks:
+  - debug: var=inventory_hostname
+  
+#  - debug: var=ansible_hostname
+#  - debug: var=hostvars
+  - name: Copying package vault_1.10.2-1_amd64.deb
+    ansible.builtin.copy:
+      src: ./vault_1.10.2-1_amd64.deb
+      dest: /tmp/
+  - name: Install vault from local file.
+    ansible.builtin.apt:
+     deb: /tmp/vault_1.10.2-1_amd64.deb
+  - name: Configuring vault
+    ansible.builtin.template:
+     src: ./vault.hcl.j2
+     dest: /etc/vault.d/vault.hcl
+     owner: vault
+     group: vault
+     mode: '0644'
+  - name: Configuring openssl
+    local_action: 
+     module: ansible.builtin.template
+     src: ./openssl.cnf.j2
+     dest: ./openssl.cnf
+  - name: Running openssl to generate new tls keys for the vault.
+    local_action:
+     module: ansible.builtin.command
+     cmd: "openssl req -newkey rsa:4096 -x509 -sha256 -days 365 -nodes -out vaultserver.crt -keyout vaultserver.key -config openssl.cnf"
+  - name: Setting permissions
+    local_action:
+      module: file
+      path: "./vaultserver.key"
+      mode: "0644"
+  - name: Copying tls keys to the vault server
+    ansible.builtin.copy:
+      src: '{{item}}'
+      dest: /opt/vault/tls/
+      owner: vault
+      group: vault
+      mode: '0600'
+    loop:
+      - ./vaultserver.crt
+      - ./vaultserver.key
+  - name: Setting permissions back
+    local_action:
+      module: file
+      path: "./vaultserver.key"
+      mode: "0600"
+  - name: Restart service vault
+    ansible.builtin.service:
+      name: vault
+      state: restarted
+  - name: Notifying user about unsealing
+    ansible.builtin.debug:
+      msg: Hashicorp Vault service on {{ inventory_hostname }} has been restarted. You should manually unseal vault.
+
+- name: Distributing vault tls keys to users
+  hosts: vaultusers
+  become: yes
+  become_user: root
+  remote_user: vagrant
+  tasks:
+  - name: Copying keys
+    ansible.builtin.copy:
+      src: ./vaultserver.crt
+      dest: /usr/local/share/ca-certificates/
+  - name: Updating certificate store
+    ansible.builtin.command:
+      cmd: "update-ca-certificates"

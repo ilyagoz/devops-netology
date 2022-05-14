@@ -1,0 +1,12 @@
+control.local ansible_ssh_user=vagrant
+
+[vaultserver]
+vault.local ansible_ssh_user=vagrant
+
+[webservers]
+www1.local ansible_ssh_user=vagrant
+
+[vaultusers]
+vault.local ansible_ssh_user=vagrant
+www1.local ansible_ssh_user=vagrant
+control.local ansible_ssh_user=vagrant

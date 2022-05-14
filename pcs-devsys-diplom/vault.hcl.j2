@@ -1,0 +1,10 @@
+storage "file" {
+  path = "/opt/vault/data"
+}
+
+# HTTPS listener
+listener "tcp" {
+  address       = "{% raw %}{{ GetPublicIP }}{% endraw %}:8200"
+  tls_cert_file = "/opt/vault/tls/vaultserver.crt"
+  tls_key_file  = "/opt/vault/tls/vaultserver.key"
+}

@@ -1,0 +1,19 @@
+---
+- name: Enabling ufw
+  hosts: webservers
+  become: true
+  tasks:
+  - name: Allow ssh and https
+    ufw:
+      rule: allow
+      port: '{{ item }}'
+    with_items:
+     - ssh
+     - https
+  - name: Allow all on lo
+    ufw:
+      rule: allow
+      if: lo  
+      direction: in
+
+

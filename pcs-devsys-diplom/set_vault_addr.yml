@@ -1,0 +1,9 @@
+- name: Setting VAULT_ADDR
+  hosts: vaultusers
+  become: yes
+  tasks:
+  - name: ++
+    lineinfile:
+      path: "/etc/environment"
+      state: "present"
+      line: VAULT_ADDR="https://vault.local:8200"
